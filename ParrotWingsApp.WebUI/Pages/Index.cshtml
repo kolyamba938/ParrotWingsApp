@@ -1,0 +1,519 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Parrot Wings Web Application";
+}
+
+
+<style>
+    .dx-form-button {
+        text-align: right;
+    }
+
+    .custom-data {
+        padding: 8px 15px 9px 0;
+        }
+
+    .dx-fieldset {
+        margin-left: 0;    
+    }
+
+    .current-user-data-container {
+        background: aliceblue;    
+    }
+
+    #unexpected-error {
+        color: red;    
+    }
+</style>
+
+<div id="parrot-wings-app-container" ng-app="ParrotWingsApp" class="container-fluid">
+    <div ng-controller="loginFormController">
+        <div class="pw-login-container" ng-if="!$root.userAuthorized">
+            <div class="dx-fieldset">
+                <div class="dx-field">
+                    <div class="dx-field-value">
+                        <div dx-radio-group="radioGroup.loginOrRegister"></div>
+                    </div>
+                </div>
+                <div class="dx-field" ng-if="loginOrRegisterValue == radioItems[1]">
+                    <div class="dx-field-label">Имя пользователя</div>
+                    <div class="dx-field-value">
+                        <div id="txtBox-userName" dx-text-box="textBox.username" dx-validator="nameValidationRules"></div>
+                    </div>
+                </div>
+                <div class="dx-field">
+                    <div class="dx-field-label">Email</div>
+                    <div class="dx-field-value">
+                        <div id="txtBox-email" dx-text-box="textBox.email" dx-validator="emailValidationRules"></div>
+                    </div>
+                </div>
+                <div class="dx-field">
+                    <div class="dx-field-label">Пароль</div>
+                    <div class="dx-field-value">
+                        <div id="txtBox-password" dx-text-box="textBox.password" dx-validator="passwordValidationRules"></div>
+                    </div>
+                </div>
+                <div class="dx-field" ng-if="loginOrRegisterValue == radioItems[1]">
+                    <div class="dx-field-label">Подтверждение пароля</div>
+                    <div class="dx-field-value">
+                        <div id="txtBox-passwordRepeat" dx-text-box="textBox.passwordRepeat" dx-validator="confirmPasswordValidationRules"></div>
+                    </div>
+                </div>
+                <div class="dx-form-button">
+                    <div dx-button="submitButton"></div>
+                </div>
+                <div id="unexpected-error" ng-bind="loginError" ng-if="loginError"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div ng-controller="transactionsFormController">
+        <div class="pw-transactions-container" ng-if="$root.userAuthorized" class="container-fluid">
+            <div class="row">
+                <div class="new-transaction-form-container col-8">
+                    <div class="dx-fieldset">
+                        <h3>Новая транзакция</h3>
+                        <div class="dx-field">
+                            <div class="dx-field-label">Получатель:</div>
+                            <div class="dx-field-value">
+                                <div id="selectBox-recipient"  dx-select-box="newTransactionRecipientSelectBoxOptions" dx-validator="recipientValidationRules"></div>
+                            </div>
+                        </div>
+                        <div class="dx-field">
+                            <div class="dx-field-label">Сумма:</div>
+                            <div class="dx-field-value">
+                                <div id="numericBox-amount" dx-number-box="newTransactionAmountOptions" dx-validator="amountValidationRules"></div>
+                            </div>
+                        </div>
+                        <div class="dx-form-button">
+                            <div dx-button="newTransactionSubmitButton"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="current-user-data-container col-4">
+                    <div class="dx-fieldset">
+                        <h3>Мои данные</h3>
+                        <div class="dx-field">
+                            <div class="dx-field-label">Имя:</div>
+                            <div class="dx-field-value">
+                                <div class="custom-data" ng-bind="currentUser.name"></div>
+                            </div>
+                        </div>
+                        <div class="dx-field">
+                            <div class="dx-field-label">Баланс (PW):</div>
+                            <div class="dx-field-value">
+                                <div class="custom-data" ng-bind="currentUser.balance"></div>
+                            </div>
+                        </div>
+                        <div class="dx-form-button">
+                            <div dx-button="logoutButton"></div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            <div class="transaction-grid-container row">
+                <div class="col-12">
+                    <h3>История операций</h3>
+                    <div dx-data-grid="dataGridOptions"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var apiUrl = '@Html.Raw(@Model.WebApiUrl)';
+
+    var parrotWingsApp = angular.module('ParrotWingsApp', ['dx']);
+    parrotWingsApp.controller('loginFormController', function loginFormController($scope, $rootScope, $http) {
+        //MODEL
+        $rootScope.userAuthorized = checkToken();
+        $scope.radioItems = ["Вход", "Регистрация"];
+        $scope.loginData =
+        {
+            email: '',
+            password: '',
+            passwordRepeat: '',
+            username: ''
+        };
+        $scope.loginError = null;
+        $scope.loginOrRegisterValue = $scope.radioItems[0];
+
+        //CONTROLS SETTINGS
+        $scope.radioGroup = {
+            loginOrRegister: {
+                items: $scope.radioItems,
+                value: $scope.loginOrRegisterValue,
+                onValueChanged: function (e) {
+                    $scope.loginOrRegisterValue = e.value;
+                }
+            }
+        };
+        $scope.textBox = {
+            username: {
+                bindingOptions: {
+                    value: "loginData.username"
+                }
+            },
+            email: {
+                bindingOptions: {
+                    value: "loginData.email"
+                }
+            },
+            password: {
+                mode: 'password',
+                showClearButton: true,
+                bindingOptions: {
+
+                    value: "loginData.password"
+                }
+            },
+            passwordRepeat: {
+                mode: 'password',
+                showClearButton: true,
+                bindingOptions: {
+                    value: "loginData.passwordRepeat"
+                }
+            }
+        };
+        $scope.submitButton = {
+            stylingMode: 'contained',
+            text: 'Продолжить',
+            type: 'normal',
+            width: 120,
+            onClick: submitForm,
+        };
+
+        //CONTROL VALIDATION SETTINGS
+        $scope.nameValidationRules = {
+            validationRules: [{
+                type: "required",
+                message: "Обязательное поле"
+            }]
+        }
+        $scope.emailValidationRules = {
+            validationRules: [{
+                type: "required",
+                message: "Обязательное поле"
+            }, {
+                type: "email",
+                message: "Некорректный email"
+                }
+            ]
+        }
+        $scope.passwordValidationRules = {
+            validationRules: [{
+                type: "required",
+                message: "Обязательное поле"
+            }]
+        };
+        $scope.confirmPasswordValidationRules = {
+            validationRules: [{
+                    type: "compare",
+                    comparisonTarget: function () {
+                        return $scope.loginData.password;
+                    },
+                    message: "'Пароль' и 'Подтверждение пароля' не совпадают."
+                },
+                {
+                    type: "required",
+                    message: "Обязательное поле"
+                }]
+        };
+
+        
+        //METHODS
+        function validateOnRegister()
+        {
+            var isUserNameValid = $("#txtBox-userName").dxValidator("instance").validate().status !== 'invalid';
+            var isEmailValid = $("#txtBox-email").dxValidator("instance").validate().status !== 'invalid';
+            var isPasswordValid = $("#txtBox-password").dxValidator("instance").validate().status !== 'invalid';
+            var isPasswordRepeatValid = $("#txtBox-passwordRepeat").dxValidator("instance").validate().status !== 'invalid';
+            return isUserNameValid && isEmailValid && isPasswordValid && isPasswordRepeatValid;
+        }
+        function validateOnLogin()
+        {
+            var isEmailValid = $("#txtBox-email").dxValidator("instance").validate().status !== 'invalid';
+            var isPasswordValid = $("#txtBox-password").dxValidator("instance").validate().status !== 'invalid';
+            return isEmailValid && isPasswordValid;
+        }
+        function submitForm(e) {
+            $scope.loginError = null;
+            //login
+            if ($scope.loginOrRegisterValue == $scope.radioItems[0]) {
+                if (!validateOnLogin()) return;
+                var loginCredentials =
+                {
+                    Email: $scope.loginData.email,
+                    UserName: $scope.loginData.username,
+                    Password: $scope.loginData.password,
+                };
+
+                var loginRequest = {
+                    method: 'POST',
+                    url: apiUrl + 'users/login',
+                    data: loginCredentials
+                };
+
+                $http(loginRequest).
+                    then(function success(response) {
+                        sessionStorage.setItem("user_token", response.data.access_token);
+                        $rootScope.userAuthorized = true;
+                        $scope.loginData = {};
+                        $rootScope.$broadcast('authorizationSuccessEvent', {});
+                    }, function error(response) {
+                        $scope.loginError = response.data.errorText;
+                    });
+            }
+            //registration
+            else {
+                if (!validateOnRegister()) return;
+
+                var registerCredentials =
+                {
+                    Email: $scope.loginData.email,
+                    UserName: $scope.loginData.username,
+                    Password: $scope.loginData.password
+                };
+
+                var registerRequest = {
+                    method: 'POST',
+                    url: apiUrl + 'users/register',
+                    data: registerCredentials
+                };
+
+                $http(registerRequest).
+                    then(function success(response) {
+                        sessionStorage.setItem("user_token", response.data.access_token);
+                        $rootScope.userAuthorized = true;
+                        $scope.loginData = {};
+                        $rootScope.$broadcast('authorizationSuccessEvent', {});
+                    }, function error(response) {
+                        $scope.loginError = response.data.errorText;
+                    });
+            }
+        }
+        function checkToken() {
+            if (!sessionStorage.getItem("user_token")) return false;
+            return true;
+        }
+    });
+
+    parrotWingsApp.controller('transactionsFormController', function loginFormController($scope, $rootScope, $http) {
+        //MODEL
+        $scope.transactions = [];
+        $scope.currentUser = {};
+        $scope.availableUsers = [];
+        $scope.newTransaction = {
+            amount: 1,
+            recipient: ''
+        };
+
+        //CONTROL SETTINGS
+        $scope.headerFilter = {
+            visible: true
+        };
+        $scope.dataGridOptions = {
+            columns: [
+                {
+                    dataField: "transactionTypeName",
+                    caption: "Тип транзакции",
+                },
+                {
+                    dataField: "dateTime",
+                    caption: "Дата",
+                    format: "MM/dd/yyyy hh:mm",
+                    dataType: "date",
+                    sortIndex: 0,
+                    sortOrder: 'desc'
+                },
+                {
+                    dataField: "senderName",
+                    caption: "Отправитель",
+                },
+                {
+                    dataField: "recipientName",
+                    caption: "Получатель",
+                },
+                {
+                    dataField: "amount",
+                    caption: "Сумма",
+                },
+                {
+                    dataField: "balance",
+                    caption: "Баланс",
+                },{
+                    type: "buttons",
+                    buttons: [
+                        {
+                            text: 'Повторить',
+                            type: 'normal',
+                            onClick: repeatTransaction
+                        }
+                    ]
+                }],
+            showBorders: true,
+            noDataText: 'История транзакций пуста',
+            bindingOptions: {
+                dataSource: "transactions",
+                headerFilter: "headerFilter"
+            }
+        };
+        $scope.newTransactionRecipientSelectBoxOptions = {
+            displayExpr: "name",
+            valueExpr: "id",
+            bindingOptions: {
+                dataSource: "availableUsers",
+                value: "newTransaction.recipient"
+            },
+            placeholder: "Выберите получателя",
+            noDataText: "Нет пользователей для выбора"
+        };
+        $scope.newTransactionSubmitButton = {
+            stylingMode: 'contained',
+            text: 'Отправить',
+            type: 'normal',
+            width: 120,
+            onClick: submitTransaction
+        };
+        $scope.logoutButton = {
+            stylingMode: 'contained',
+            text: 'Выйти из системы',
+            type: 'normal',
+            onClick: logout
+        }
+        $scope.newTransactionAmountOptions = {
+            showSpinButtons: true,
+            showClearButton: true,
+            min: 1,
+            bindingOptions: {
+                value: "newTransaction.amount"
+            }
+        };
+
+        //CONTROL VALIDATION SETTINGS
+        $scope.recipientValidationRules = {
+            validationRules: [{
+                type: "required",
+                message: "Обязательное поле"
+            }]
+        }
+        $scope.amountValidationRules = {
+            validationRules: [{
+                type: "required",
+                message: "Обязательное поле"
+            },
+            {
+                type: "custom",
+                validationCallback: validateAmount ,
+                message: "Недостаточно средств"
+            }]
+        }
+
+        //METHODS
+        function repeatTransaction(e) {
+            $scope.newTransaction.recipient = e.row.data.recipientId;
+            $scope.newTransaction.amount = e.row.data.amount;
+            $scope.$apply();
+        }
+        function validateAmount (e) {
+            return e.value <= $scope.currentUser.balance;
+        }
+        function logout() {
+            sessionStorage.removeItem("user_token");
+            $rootScope.userAuthorized = false;
+        }
+        function update() {
+            if ($rootScope.userAuthorized)
+            {
+                getUserTransactions();
+                getUserData();
+                getAvailableUsers();
+            }
+        }
+        function getUserTransactions() {
+            var req = {
+                method: 'GET',
+                url: apiUrl + 'transactions',
+                headers:
+                {
+                    "Authorization": "Bearer " + sessionStorage.getItem("user_token")
+                }
+            }
+
+            $http(req).
+                then(function success(response) {
+                    $scope.transactions = response.data;
+                });
+        }
+        function getUserData() {
+            var req = {
+                method: 'GET',
+                url: apiUrl + 'users/getuserdata',
+                headers:
+                {
+                    "Authorization": "Bearer " + sessionStorage.getItem("user_token")
+                }
+            }
+
+            $http(req).
+                then(function success(response) {
+                    $scope.currentUser = response.data;
+                });
+        }
+        function getAvailableUsers() {
+            var req = {
+                method: 'GET',
+                url: apiUrl + 'users',
+                headers:
+                {
+                    "Authorization": "Bearer " + sessionStorage.getItem("user_token")
+                }
+            }
+
+            $http(req).
+                then(function success(response) {
+                    $scope.availableUsers = response.data;
+                });
+        }
+        function validateOnSubmitTransaction() {
+            var isRecipientValid = $("#selectBox-recipient").dxValidator("instance").validate().status !== 'invalid';
+            var isAmountValid = $("#numericBox-amount").dxValidator("instance").validate().status !== 'invalid';
+
+            return isRecipientValid && isAmountValid;
+        }
+        function submitTransaction() {
+            if (!validateOnSubmitTransaction()) return;
+            var transactionData = {
+                Amount: $scope.newTransaction.amount,
+                RecipientId: $scope.newTransaction.recipient
+            };
+
+            var submitTransactionRequest = {
+                method: 'POST',
+                url: apiUrl + 'transactions/addtransaction',
+                data: transactionData,
+                headers:
+                {
+                    "Authorization": "Bearer " + sessionStorage.getItem("user_token")
+                }
+            };
+
+            $http(submitTransactionRequest).
+                then(function success(response) {
+                    update();
+                    $scope.newTransaction = {
+                        amount: 1,
+                        recipient: ''
+                    };
+                });
+        }
+
+        $scope.$on('authorizationSuccessEvent', function (event, args) {
+            update();
+        });
+        update();
+    });
+
+</script>

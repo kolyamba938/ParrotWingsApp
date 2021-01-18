@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <UserSecretsId>fd67940a-ce1f-44e4-8be7-0be2520c454b</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\js\dx\" />
+    <Folder Include="wwwroot\lib\angular-js\" />
+  </ItemGroup>
+
+</Project>
